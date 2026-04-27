@@ -1,0 +1,84 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>세력전 탑다운 RPG/RTS 프로토타입</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="gameFrame">
+    <div id="gameShell">
+      <div id="topBar">
+        <span class="stat">Gold <span id="gold" class="value">0</span></span>
+        <span class="stat">선택 <span id="selectedCount" class="value">0</span></span>
+        <span class="stat">점령 건물 <span id="ownedBuildings" class="value">0</span></span>
+        <span class="stat">성채 점령 <span id="fortressTimer" class="value">0.0s</span></span>
+        <span class="stat">상태 <span id="gameStatus" class="value">교전 중</span></span>
+      </div>
+
+      <div id="canvasWrap">
+        <canvas id="game" width="1450" height="640"></canvas>
+        <div id="overlay">
+          <div id="overlayText"></div>
+          <div id="overlayButtons">
+            <button id="startButton" type="button">시작</button>
+            <button id="restartButton" type="button" style="display:none">재시작</button>
+          </div>
+        </div>
+      </div>
+
+      <aside id="sidePanel">
+        <div class="panelBlock">
+          <h2>선택 유닛</h2>
+          <div id="unitDetails">유닛을 좌클릭하거나 드래그해서 선택하세요.</div>
+        </div>
+        <div class="panelBlock">
+          <h2>건물 현황</h2>
+          <div id="buildingDetails"></div>
+        </div>
+        <div id="help">
+          <div class="legend">
+            <span><i class="dot" style="background:#3297ff"></i>P 우리팀</span>
+            <span><i class="dot" style="background:#e44242"></i>A 적</span>
+            <span><i class="dot" style="background:#9aa1aa"></i>N 중립</span>
+          </div>
+          <br>
+          좌클릭: 선택<br>
+          드래그: 다중 선택<br>
+          우클릭 빈 타일: 이동<br>
+          우클릭 적: 공격<br>
+          우클릭 건물: 점령<br>
+          E: 가까운 대상과 대화<br>
+          WASD/방향키: 카메라 이동<br>
+          ESC: 선택 해제
+        </div>
+      </aside>
+
+      <div id="bottomPanel">
+        <div id="dialogue">
+          <div id="dialogueText">대화 가능 대상 근처에서 E 키를 누르세요.</div>
+          <div class="choices">
+            <button data-choice="friendly">우호적으로 설득</button>
+            <button data-choice="pressure">강하게 압박</button>
+            <button id="rewardBtn" data-choice="reward">보상을 제안</button>
+          </div>
+        </div>
+        <div id="log">
+          <div id="logLines"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="scripts/config.js"></script>
+  <script src="scripts/utils.js"></script>
+  <script src="scripts/map.js"></script>
+  <script src="scripts/entities.js"></script>
+  <script src="scripts/systems.js"></script>
+  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+  <script src="scripts/renderer.js"></script>
+  <script src="scripts/main.js"></script>
+</body>
+</html>
+

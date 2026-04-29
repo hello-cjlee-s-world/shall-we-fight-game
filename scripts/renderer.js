@@ -30,9 +30,71 @@
 
         this.materials = this.createMaterials();
         this.geometries = this.createGeometries();
-        this.mapRef = null;
 
+        // ── 캐시 ────────────────────────────────────────────────
+        // 건물 타입별 고정 material (bodyMat, accentMat): 타입이 변하지 않으므로 한 번만 생성
+        this.buildingTypeMats = this._createBuildingTypeMats();
+        // 세력 color → MeshStandardMaterial 캐시 (건물 factionMat, 유닛 factionMat 공용)
+        this.factionMatCache = new Map();
+        // 유닛 spriteColor → MeshStandardMaterial 캐시 (gearMat)
+        this.gearMatCache = new Map();
+        // 유닛 라벨 role → { texture, material } 캐시
+        this.labelCache = new Map();
+
+        this.mapRef = null;
         this.addLights();
+      }
+
+      // ── 건물 타입별 고정 material 사전 생성 ─────────────────────
+      _createBuildingTypeMats() {
+        const make = (color, roughness = 0.68, metalness = 0.03) =>
+          new THREE.MeshStandardMaterial({ color, roughness, metalness });
+        return {
+          [BuildingType.BARRACKS]: {
+            body:   make(0xb95538),
+            accent: make(0xf3c05f, 0.45, 0.08),
+            height: 22
+          },
+          [BuildingType.HEALER]: {
+            body:   make(0xf4f7fb),
+            accent: make(0x40d187, 0.45, 0.08),
+            height: 20
+          },
+          [BuildingType.WATCH]: {
+            body:   make(0x8b6f4e),
+            accent: make(0x8fd3ff, 0.45, 0.08),
+            height: 36
+          },
+          [BuildingType.MINE]: {
+            body:   make(0x7a6246),
+            accent: make(0xffd15a, 0.45, 0.08),
+            height: 18
+          },
+          [BuildingType.FORTRESS]: {
+            body:   make(0x596579),
+            accent: make(0xd9e6ff, 0.45, 0.08),
+            height: 30
+          }
+        };
+      }
+
+      // ── 세력/장비 색상 material 캐시 lookup ─────────────────────
+      _getFactionMat(colorHex) {
+        if (!this.factionMatCache.has(colorHex)) {
+          this.factionMatCache.set(colorHex,
+            new THREE.MeshStandardMaterial({ color: new THREE.Color(colorHex), roughness: 0.55 })
+          );
+        }
+        return this.factionMatCache.get(colorHex);
+      }
+
+      _getGearMat(colorHex) {
+        if (!this.gearMatCache.has(colorHex)) {
+          this.gearMatCache.set(colorHex,
+            new THREE.MeshStandardMaterial({ color: new THREE.Color(colorHex), roughness: 0.45 })
+          );
+        }
+        return this.gearMatCache.get(colorHex);
       }
 
       createMaterials() {
@@ -69,7 +131,9 @@
           move: new THREE.MeshBasicMaterial({ color: 0xffffff }),
           capture: new THREE.MeshBasicMaterial({ color: 0xffffff }),
           shadow: new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.22 }),
-          hit: new THREE.MeshBasicMaterial({ color: 0xfff7a8, transparent: true, opacity: 0.9 })
+          hit: new THREE.MeshBasicMaterial({ color: 0xfff7a8, transparent: true, opacity: 0.9 }),
+          flashRing: new THREE.MeshBasicMaterial({ color: 0xff2b2b }),
+          selectionBox: new THREE.LineBasicMaterial({ color: 0x9bd3ff })
         };
       }
 
@@ -86,15 +150,50 @@
           wave: new THREE.BoxGeometry(18, 0.5, 1.2),
           buildingBase: new THREE.BoxGeometry(24, 22, 24),
           buildingRoof: new THREE.ConeGeometry(17, 12, 4),
+          buildingPlinth: new THREE.BoxGeometry(30, 4, 30),
+          buildingTrim27: new THREE.BoxGeometry(27, 3, 27),
+          buildingBanner: new THREE.BoxGeometry(28, 4, 4),
+          buildingWindowSm: new THREE.BoxGeometry(5, 6, 2),
+          barracksSpear: new THREE.BoxGeometry(3, 24, 3),
+          barracksDoor: new THREE.BoxGeometry(10, 10, 3),
+          barracksShield: new THREE.CylinderGeometry(5, 5, 2, 16),
+          healerCrossV: new THREE.BoxGeometry(5, 22, 4),
+          healerCrossH: new THREE.BoxGeometry(18, 5, 4),
+          healerRing: new THREE.RingGeometry(9, 12, 32),
+          watchDeck: new THREE.CylinderGeometry(15, 15, 6, 8),
+          watchMast: new THREE.BoxGeometry(4, 18, 4),
+          watchRail: new THREE.BoxGeometry(28, 3, 3),
+          watchBeacon: new THREE.SphereGeometry(4, 12, 8),
+          mineOreA: new THREE.DodecahedronGeometry(5),
+          mineOreB: new THREE.DodecahedronGeometry(4),
+          mineEntrance: new THREE.BoxGeometry(15, 10, 3),
+          mineCart: new THREE.BoxGeometry(14, 6, 9),
+          mineWheel: new THREE.CylinderGeometry(2.5, 2.5, 2, 12),
+          fortressTower: new THREE.BoxGeometry(10, 32, 10),
+          fortressBattlement: new THREE.BoxGeometry(30, 5, 8),
+          fortressFlag: new THREE.BoxGeometry(16, 9, 2),
           unitBody: new THREE.CapsuleGeometry(5.8, 13, 4, 10),
           unitHead: new THREE.SphereGeometry(5, 12, 8),
           unitArm: new THREE.CapsuleGeometry(2, 10, 3, 6),
           unitLeg: new THREE.CapsuleGeometry(2.2, 8, 3, 6),
+          unitChest: new THREE.BoxGeometry(11, 7, 7),
+          unitHair: new THREE.SphereGeometry(5.3, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.52),
           shoulder: new THREE.SphereGeometry(3.2, 8, 6),
           unitRing: new THREE.TorusGeometry(15, 1.2, 6, 36),
+          unitShadow: new THREE.CircleGeometry(13, 24),
           bar: new THREE.BoxGeometry(1, 1, 1),
           marker: new THREE.TorusGeometry(6, 0.8, 5, 4),
-          effect: new THREE.SphereGeometry(4, 10, 8)
+          effect: new THREE.SphereGeometry(4, 10, 8),
+          watchVisionRing: new THREE.RingGeometry(0.94, 1, 72),
+          swordsmanBlade: new THREE.BoxGeometry(3, 26, 3),
+          swordsmanGuard: new THREE.BoxGeometry(10, 3, 3),
+          ninjaScarf: new THREE.BoxGeometry(18, 4, 3),
+          ninjaDagger: new THREE.BoxGeometry(3, 14, 3),
+          fighterGlove: new THREE.BoxGeometry(7, 7, 7),
+          mageStaff: new THREE.BoxGeometry(3, 26, 3),
+          guardShield: new THREE.CylinderGeometry(7, 7, 3, 18),
+          guardMace: new THREE.BoxGeometry(4, 18, 4),
+          moveCone: new THREE.ConeGeometry(7, 18, 4)
         };
       }
 
@@ -150,6 +249,7 @@
         this.clearGroup(this.mapGroup);
         this.mapRef = this.game.map;
 
+        // 맵 전용 일회성 material: 맵은 재시작 시에만 재생성되므로 여기서만 사용
         const flowerMat = new THREE.MeshBasicMaterial({ color: 0xf4dc63 });
         const reedMat = new THREE.MeshStandardMaterial({ color: 0x8bbf65, roughness: 0.9, flatShading: true });
 
@@ -243,16 +343,20 @@
       }
 
       drawWatchTowerVision() {
-        const geometry = new THREE.RingGeometry(0.94, 1, 72);
         for (const b of this.game.buildings.filter(item => item.type === BuildingType.WATCH && item.faction.id !== "neutral")) {
           const radius = (3 + WATCH_TOWER_VISION_BONUS) * TILE_SIZE;
-          const material = new THREE.MeshBasicMaterial({
-            color: new THREE.Color(b.faction.color),
-            transparent: true,
-            opacity: 0.22,
-            side: THREE.DoubleSide
-          });
-          const ring = new THREE.Mesh(geometry, material);
+          // 세력 색상 material은 캐시에서 가져옴 (투명 버전이 별도 필요하므로 vision 전용 캐시 사용)
+          const key = "vision_" + b.faction.color;
+          if (!this.factionMatCache.has(key)) {
+            this.factionMatCache.set(key, new THREE.MeshBasicMaterial({
+              color: new THREE.Color(b.faction.color),
+              transparent: true,
+              opacity: 0.22,
+              side: THREE.DoubleSide
+            }));
+          }
+          const material = this.factionMatCache.get(key);
+          const ring = new THREE.Mesh(this.geometries.watchVisionRing, material);
           ring.position.set(b.px, 2.5, b.py);
           ring.rotation.x = -Math.PI / 2;
           ring.scale.set(radius, radius, radius);
@@ -261,103 +365,106 @@
       }
 
       drawBuilding(b) {
-        const typeStyle = {
-          [BuildingType.BARRACKS]: { color: 0xb95538, accent: 0xf3c05f, height: 22 },
-          [BuildingType.HEALER]: { color: 0xf4f7fb, accent: 0x40d187, height: 20 },
-          [BuildingType.WATCH]: { color: 0x8b6f4e, accent: 0x8fd3ff, height: 36 },
-          [BuildingType.MINE]: { color: 0x7a6246, accent: 0xffd15a, height: 18 },
-          [BuildingType.FORTRESS]: { color: 0x596579, accent: 0xd9e6ff, height: 30 }
-        }[b.type];
-        const bodyMat = new THREE.MeshStandardMaterial({ color: typeStyle.color, roughness: 0.68, metalness: 0.03 });
-        const accentMat = new THREE.MeshStandardMaterial({ color: typeStyle.accent, roughness: 0.45, metalness: 0.08 });
-        const factionMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(b.faction.color), roughness: 0.55 });
+        // 건물 타입별 고정 material은 사전 캐시에서 가져옴 (매 프레임 new 하지 않음)
+        const typeStyle = this.buildingTypeMats[b.type];
+        const bodyMat   = typeStyle.body;
+        const accentMat = typeStyle.accent;
+        const height    = typeStyle.height;
+
+        // 세력 color material은 faction 캐시에서 가져옴
+        const factionMat = this._getFactionMat(b.faction.color);
+
         const x = b.px, z = b.py;
-        const plinth = new THREE.Mesh(new THREE.BoxGeometry(30, 4, 30), this.materials.stone);
+        const plinth = new THREE.Mesh(this.geometries.buildingPlinth, this.materials.stone);
         plinth.position.set(x, 3, z);
         plinth.receiveShadow = true;
         plinth.castShadow = true;
         const base = new THREE.Mesh(this.geometries.buildingBase, bodyMat);
-        base.scale.y = typeStyle.height / 22;
-        base.position.set(x, typeStyle.height / 2 + 2, z);
+        base.scale.y = height / 22;
+        base.position.set(x, height / 2 + 2, z);
         base.castShadow = true;
         base.receiveShadow = true;
         this.addOutline(base, 1.055);
 
         const roof = new THREE.Mesh(this.geometries.buildingRoof, factionMat);
-        roof.position.set(x, typeStyle.height + 12, z);
+        roof.position.set(x, height + 12, z);
         roof.rotation.y = Math.PI / 4;
         roof.castShadow = true;
         this.addOutline(roof, 1.06);
-        const trim = new THREE.Mesh(new THREE.BoxGeometry(27, 3, 27), accentMat);
-        trim.position.set(x, typeStyle.height + 4, z);
+        const trim = new THREE.Mesh(this.geometries.buildingTrim27, accentMat);
+        trim.position.set(x, height + 4, z);
         trim.castShadow = true;
         this.buildingGroup.add(plinth, base, trim, roof);
 
-        const banner = new THREE.Mesh(new THREE.BoxGeometry(28, 4, 4), factionMat);
-        banner.position.set(x, typeStyle.height + 3, z - 14);
+        const banner = new THREE.Mesh(this.geometries.buildingBanner, factionMat);
+        banner.position.set(x, height + 3, z - 14);
         banner.castShadow = true;
-        const windowA = new THREE.Mesh(new THREE.BoxGeometry(5, 6, 2), this.materials.dark);
-        windowA.position.set(x - 7, typeStyle.height * 0.55, z - 13);
-        const windowB = new THREE.Mesh(new THREE.BoxGeometry(5, 6, 2), this.materials.dark);
-        windowB.position.set(x + 7, typeStyle.height * 0.55, z - 13);
+        const windowA = new THREE.Mesh(this.geometries.buildingWindowSm, this.materials.dark);
+        windowA.position.set(x - 7, height * 0.55, z - 13);
+        const windowB = new THREE.Mesh(this.geometries.buildingWindowSm, this.materials.dark);
+        windowB.position.set(x + 7, height * 0.55, z - 13);
         this.buildingGroup.add(banner, windowA, windowB);
 
         if (b.type === BuildingType.BARRACKS) {
-          const door = new THREE.Mesh(new THREE.BoxGeometry(10, 10, 3), this.materials.dark);
+          const door = new THREE.Mesh(this.geometries.barracksDoor, this.materials.dark);
           door.position.set(x, 8, z - 13);
-          const spearA = new THREE.Mesh(new THREE.BoxGeometry(3, 24, 3), accentMat);
+          const spearA = new THREE.Mesh(this.geometries.barracksSpear, accentMat);
           spearA.position.set(x - 10, 17, z + 2);
           spearA.rotation.z = 0.35;
-          const spearB = new THREE.Mesh(new THREE.BoxGeometry(3, 24, 3), accentMat);
+          const spearB = new THREE.Mesh(this.geometries.barracksSpear, accentMat);
           spearB.position.set(x + 10, 17, z + 2);
           spearB.rotation.z = -0.35;
-          const shield = new THREE.Mesh(new THREE.CylinderGeometry(5, 5, 2, 16), accentMat);
+          const shield = new THREE.Mesh(this.geometries.barracksShield, accentMat);
           shield.position.set(x, 20, z - 15);
           shield.rotation.x = Math.PI / 2;
           this.buildingGroup.add(door, spearA, spearB, shield);
         }
 
         if (b.type === BuildingType.HEALER) {
-          const crossA = new THREE.Mesh(new THREE.BoxGeometry(5, 22, 4), accentMat);
-          crossA.position.set(x, typeStyle.height + 18, z);
-          const crossB = new THREE.Mesh(new THREE.BoxGeometry(18, 5, 4), accentMat);
-          crossB.position.set(x, typeStyle.height + 18, z);
-          const glow = new THREE.Mesh(new THREE.RingGeometry(9, 12, 32), new THREE.MeshBasicMaterial({
-            color: 0x7fffc1,
-            transparent: true,
-            opacity: 0.35,
-            side: THREE.DoubleSide
-          }));
+          const crossA = new THREE.Mesh(this.geometries.healerCrossV, accentMat);
+          crossA.position.set(x, height + 18, z);
+          const crossB = new THREE.Mesh(this.geometries.healerCrossH, accentMat);
+          crossB.position.set(x, height + 18, z);
+          // healer glow: 색이 고정이므로 materials에 포함
+          if (!this.materials.healerGlow) {
+            this.materials.healerGlow = new THREE.MeshBasicMaterial({
+              color: 0x7fffc1, transparent: true, opacity: 0.35, side: THREE.DoubleSide
+            });
+          }
+          const glow = new THREE.Mesh(this.geometries.healerRing, this.materials.healerGlow);
           glow.position.set(x, 5, z);
           glow.rotation.x = -Math.PI / 2;
           this.buildingGroup.add(crossA, crossB, glow);
         }
 
         if (b.type === BuildingType.WATCH) {
-          const deck = new THREE.Mesh(new THREE.CylinderGeometry(15, 15, 6, 8), accentMat);
-          deck.position.set(x, typeStyle.height + 10, z);
+          const deck = new THREE.Mesh(this.geometries.watchDeck, accentMat);
+          deck.position.set(x, height + 10, z);
           this.addOutline(deck, 1.05);
-          const mast = new THREE.Mesh(new THREE.BoxGeometry(4, 18, 4), factionMat);
-          mast.position.set(x, typeStyle.height + 22, z);
-          const railA = new THREE.Mesh(new THREE.BoxGeometry(28, 3, 3), this.materials.wood);
-          railA.position.set(x, typeStyle.height + 15, z - 13);
-          const railB = new THREE.Mesh(new THREE.BoxGeometry(28, 3, 3), this.materials.wood);
-          railB.position.set(x, typeStyle.height + 15, z + 13);
-          const beacon = new THREE.Mesh(new THREE.SphereGeometry(4, 12, 8), new THREE.MeshBasicMaterial({ color: 0x8fd3ff }));
-          beacon.position.set(x, typeStyle.height + 32, z);
+          const mast = new THREE.Mesh(this.geometries.watchMast, factionMat);
+          mast.position.set(x, height + 22, z);
+          const railA = new THREE.Mesh(this.geometries.watchRail, this.materials.wood);
+          railA.position.set(x, height + 15, z - 13);
+          const railB = new THREE.Mesh(this.geometries.watchRail, this.materials.wood);
+          railB.position.set(x, height + 15, z + 13);
+          if (!this.materials.watchBeacon) {
+            this.materials.watchBeacon = new THREE.MeshBasicMaterial({ color: 0x8fd3ff });
+          }
+          const beacon = new THREE.Mesh(this.geometries.watchBeacon, this.materials.watchBeacon);
+          beacon.position.set(x, height + 32, z);
           this.buildingGroup.add(deck, mast, railA, railB, beacon);
         }
 
         if (b.type === BuildingType.MINE) {
-          const oreA = new THREE.Mesh(new THREE.DodecahedronGeometry(5), accentMat);
+          const oreA = new THREE.Mesh(this.geometries.mineOreA, accentMat);
           oreA.position.set(x - 8, 9, z - 13);
-          const oreB = new THREE.Mesh(new THREE.DodecahedronGeometry(4), accentMat);
+          const oreB = new THREE.Mesh(this.geometries.mineOreB, accentMat);
           oreB.position.set(x + 7, 7, z - 14);
-          const entrance = new THREE.Mesh(new THREE.BoxGeometry(15, 10, 3), this.materials.dark);
+          const entrance = new THREE.Mesh(this.geometries.mineEntrance, this.materials.dark);
           entrance.position.set(x, 8, z - 13);
-          const cart = new THREE.Mesh(new THREE.BoxGeometry(14, 6, 9), this.materials.wood);
+          const cart = new THREE.Mesh(this.geometries.mineCart, this.materials.wood);
           cart.position.set(x + 11, 7, z + 11);
-          const wheelA = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, 2, 12), this.materials.dark);
+          const wheelA = new THREE.Mesh(this.geometries.mineWheel, this.materials.dark);
           wheelA.position.set(x + 5, 5, z + 16);
           wheelA.rotation.z = Math.PI / 2;
           const wheelB = wheelA.clone();
@@ -366,7 +473,7 @@
         }
 
         if (b.type === BuildingType.FORTRESS) {
-          const tower = new THREE.Mesh(new THREE.BoxGeometry(10, 32, 10), bodyMat);
+          const tower = new THREE.Mesh(this.geometries.fortressTower, bodyMat);
           tower.position.set(x, 38, z);
           tower.castShadow = true;
           this.addOutline(tower, 1.06);
@@ -374,24 +481,35 @@
           towerA.position.set(x - 14, 30, z - 14);
           const towerB = tower.clone();
           towerB.position.set(x + 14, 30, z - 14);
-          const battlement = new THREE.Mesh(new THREE.BoxGeometry(30, 5, 8), accentMat);
+          const battlement = new THREE.Mesh(this.geometries.fortressBattlement, accentMat);
           battlement.position.set(x, 34, z - 12);
-          const flag = new THREE.Mesh(new THREE.BoxGeometry(16, 9, 2), factionMat);
+          const flag = new THREE.Mesh(this.geometries.fortressFlag, factionMat);
           flag.position.set(x + 9, 56, z);
           this.buildingGroup.add(tower, towerA, towerB, battlement, flag);
         }
 
         if (b.captureProgress > 0) {
           const back = this.makeBar(x, 35, z + 18, 28, 3, this.materials.hpBack);
-          const mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(b.captureFaction ? b.captureFaction.color : "#ffffff") });
-          const fill = this.makeBar(x - 14 + 14 * b.captureProgress / 100, 36, z + 18, 28 * b.captureProgress / 100, 3, mat);
+          // capture progress bar: captureFaction color material 캐시
+          const capColor = b.captureFaction ? b.captureFaction.color : "#ffffff";
+          const capKey = "capture_" + capColor;
+          if (!this.factionMatCache.has(capKey)) {
+            this.factionMatCache.set(capKey, new THREE.MeshBasicMaterial({ color: new THREE.Color(capColor) }));
+          }
+          const fill = this.makeBar(
+            x - 14 + 14 * b.captureProgress / 100, 36, z + 18,
+            28 * b.captureProgress / 100, 3,
+            this.factionMatCache.get(capKey)
+          );
           this.buildingGroup.add(back, fill);
         }
       }
 
       drawUnit(u) {
-        const factionMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(u.faction.color), roughness: 0.55 });
-        const gearMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(u.spriteColor), roughness: 0.45 });
+        // faction/gear material: 캐시에서 가져옴 (매 프레임 new 하지 않음)
+        const factionMat = this._getFactionMat(u.faction.color);
+        const gearMat    = this._getGearMat(u.spriteColor);
+
         const x = u.x, z = u.y;
         const bob = (u.state === "moving" || u.state === "attacking") ? Math.sin(u.animTime * 10) * 1.5 : 0;
         const recoil = Math.sin(u.attackAnim * Math.PI) * 4;
@@ -406,7 +524,7 @@
           this.unitGroup.add(marker);
         }
 
-        const shadow = new THREE.Mesh(new THREE.CircleGeometry(13, 24), this.materials.shadow);
+        const shadow = new THREE.Mesh(this.geometries.unitShadow, this.materials.shadow);
         shadow.position.set(x, 1.5, z);
         shadow.rotation.x = -Math.PI / 2;
         this.unitGroup.add(shadow);
@@ -427,7 +545,7 @@
         }
 
         if (this.game.flashTarget === u) {
-          const flash = new THREE.Mesh(this.geometries.unitRing, new THREE.MeshBasicMaterial({ color: 0xff2b2b }));
+          const flash = new THREE.Mesh(this.geometries.unitRing, this.materials.flashRing);
           flash.position.set(x, 7, z);
           flash.rotation.x = -Math.PI / 2;
           flash.scale.set(1.24, 1.24, 1.24);
@@ -451,7 +569,7 @@
         this.addOutline(body, 1.08);
         group.add(body);
 
-        const chest = new THREE.Mesh(new THREE.BoxGeometry(11, 7, 7), gearMat);
+        const chest = new THREE.Mesh(this.geometries.unitChest, gearMat);
         chest.position.set(0, 2, -1);
         chest.castShadow = true;
         this.addOutline(chest, 1.08);
@@ -463,7 +581,7 @@
         this.addOutline(head, 1.08);
         group.add(head);
 
-        const hair = new THREE.Mesh(new THREE.SphereGeometry(5.3, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.52), gearMat);
+        const hair = new THREE.Mesh(this.geometries.unitHair, gearMat);
         hair.position.set(0, 16.5, -0.7);
         hair.rotation.x = Math.PI;
         hair.castShadow = true;
@@ -510,42 +628,49 @@
       addClassGear(group, u, gearMat) {
         const swing = Math.sin(u.attackAnim * Math.PI);
         if (u.kind === "swordsman") {
-          const blade = new THREE.Mesh(new THREE.BoxGeometry(3, 26, 3), this.materials.metal);
+          const blade = new THREE.Mesh(this.geometries.swordsmanBlade, this.materials.metal);
           blade.position.set(10, 5, -2);
           blade.rotation.z = -0.65 + swing * 1.2;
-          const guard = new THREE.Mesh(new THREE.BoxGeometry(10, 3, 3), gearMat);
+          const guard = new THREE.Mesh(this.geometries.swordsmanGuard, gearMat);
           guard.position.set(8, -4, -2);
           blade.castShadow = true;
           guard.castShadow = true;
           group.add(blade, guard);
         } else if (u.kind === "ninja") {
-          const scarf = new THREE.Mesh(new THREE.BoxGeometry(18, 4, 3), gearMat);
+          const scarf = new THREE.Mesh(this.geometries.ninjaScarf, gearMat);
           scarf.position.set(0, 12, 5);
-          const daggerA = new THREE.Mesh(new THREE.BoxGeometry(3, 14, 3), this.materials.metal);
+          const daggerA = new THREE.Mesh(this.geometries.ninjaDagger, this.materials.metal);
           daggerA.position.set(8, 0, -3);
           daggerA.rotation.z = 0.65 + swing;
           group.add(scarf, daggerA);
         } else if (u.kind === "fighter") {
-          const gloveL = new THREE.Mesh(new THREE.BoxGeometry(7, 7, 7), gearMat);
+          const gloveL = new THREE.Mesh(this.geometries.fighterGlove, gearMat);
           gloveL.position.set(-10 - swing * 2, -2, -2);
-          const gloveR = new THREE.Mesh(new THREE.BoxGeometry(7, 7, 7), gearMat);
+          const gloveR = new THREE.Mesh(this.geometries.fighterGlove, gearMat);
           gloveR.position.set(10 + swing * 2, -2, -2);
           group.add(gloveL, gloveR);
         } else if (u.kind === "mage") {
-          const orb = new THREE.Mesh(new THREE.SphereGeometry(5 + swing * 2, 16, 10), new THREE.MeshBasicMaterial({
-            color: new THREE.Color(u.spriteColor),
-            transparent: true,
-            opacity: 0.82
-          }));
+          // mage orb: radius가 swing에 따라 변하므로 geometry는 매 프레임 생성이 불가피
+          // 단, material은 spriteColor 기반으로 캐시 가능 (투명 버전 별도 캐시)
+          const orbKey = "mage_orb_" + u.spriteColor;
+          if (!this.factionMatCache.has(orbKey)) {
+            this.factionMatCache.set(orbKey, new THREE.MeshBasicMaterial({
+              color: new THREE.Color(u.spriteColor),
+              transparent: true,
+              opacity: 0.82
+            }));
+          }
+          const orbMat = this.factionMatCache.get(orbKey);
+          const orb = new THREE.Mesh(new THREE.SphereGeometry(5 + swing * 2, 16, 10), orbMat);
           orb.position.set(11, 6, -4);
-          const staff = new THREE.Mesh(new THREE.BoxGeometry(3, 26, 3), this.materials.wood);
+          const staff = new THREE.Mesh(this.geometries.mageStaff, this.materials.wood);
           staff.position.set(13, -1, -3);
           group.add(orb, staff);
         } else if (u.kind === "guard") {
-          const shield = new THREE.Mesh(new THREE.CylinderGeometry(7, 7, 3, 18), gearMat);
+          const shield = new THREE.Mesh(this.geometries.guardShield, gearMat);
           shield.position.set(-10, 2, -4);
           shield.rotation.x = Math.PI / 2;
-          const mace = new THREE.Mesh(new THREE.BoxGeometry(4, 18, 4), this.materials.metal);
+          const mace = new THREE.Mesh(this.geometries.guardMace, this.materials.metal);
           mace.position.set(10, 2, -3);
           group.add(shield, mace);
         }
@@ -558,33 +683,38 @@
         return 0;
       }
 
+      // ── 유닛 라벨 텍스처 캐시 ────────────────────────────────────
+      // role 문자열은 게임 중 변하지 않으므로 최초 1회만 CanvasTexture 생성
       makeUnitLabel(text, x, y, z) {
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        canvas.width = 256;
-        canvas.height = 72;
-        ctx.font = "bold 26px system-ui, sans-serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        const labelW = Math.min(238, Math.max(112, ctx.measureText(text).width + 38));
-        const labelX = (canvas.width - labelW) / 2;
-        ctx.fillStyle = "rgba(6,8,12,.78)";
-        ctx.strokeStyle = "rgba(255,255,255,.28)";
-        ctx.lineWidth = 3;
-        this.roundRect(ctx, labelX, 12, labelW, 40, 10);
-        ctx.fill();
-        ctx.stroke();
-        ctx.lineWidth = 6;
-        ctx.strokeStyle = "rgba(8,10,14,.9)";
-        ctx.strokeText(text, canvas.width / 2, 32);
-        ctx.fillStyle = "#ffffff";
-        ctx.fillText(text, canvas.width / 2, 32);
+        if (!this.labelCache.has(text)) {
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+          canvas.width = 256;
+          canvas.height = 72;
+          ctx.font = "bold 26px system-ui, sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          const labelW = Math.min(238, Math.max(112, ctx.measureText(text).width + 38));
+          const labelX = (canvas.width - labelW) / 2;
+          ctx.fillStyle = "rgba(6,8,12,.78)";
+          ctx.strokeStyle = "rgba(255,255,255,.28)";
+          ctx.lineWidth = 3;
+          this.roundRect(ctx, labelX, 12, labelW, 40, 10);
+          ctx.fill();
+          ctx.stroke();
+          ctx.lineWidth = 6;
+          ctx.strokeStyle = "rgba(8,10,14,.9)";
+          ctx.strokeText(text, canvas.width / 2, 32);
+          ctx.fillStyle = "#ffffff";
+          ctx.fillText(text, canvas.width / 2, 32);
+          const texture = new THREE.CanvasTexture(canvas);
+          texture.minFilter = THREE.LinearFilter;
+          texture.magFilter = THREE.LinearFilter;
+          const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false });
+          this.labelCache.set(text, material);
+        }
 
-        const texture = new THREE.CanvasTexture(canvas);
-        texture.minFilter = THREE.LinearFilter;
-        texture.magFilter = THREE.LinearFilter;
-        const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false });
-        const sprite = new THREE.Sprite(material);
+        const sprite = new THREE.Sprite(this.labelCache.get(text));
         sprite.position.set(x, y, z);
         sprite.scale.set(86, 24, 1);
         return sprite;
@@ -602,13 +732,6 @@
         ctx.lineTo(x, y + radius);
         ctx.quadraticCurveTo(x, y, x + radius, y);
         ctx.closePath();
-      }
-
-      weaponGeometry(u) {
-        if (u.kind === "mage") return new THREE.SphereGeometry(5, 12, 8);
-        if (u.kind === "fighter") return new THREE.BoxGeometry(9, 9, 9);
-        if (u.kind === "guard") return new THREE.BoxGeometry(9, 16, 3);
-        return new THREE.BoxGeometry(4, 22, 4);
       }
 
       drawEffect(effect) {
@@ -639,7 +762,7 @@
         this.effectGroup.add(ring);
 
         if (effect.type === "move") {
-          const marker = new THREE.Mesh(new THREE.ConeGeometry(7, 18, 4), mat);
+          const marker = new THREE.Mesh(this.geometries.moveCone, mat);
           marker.position.set(effect.x, 15 + progress * 6, effect.y);
           marker.rotation.y = Math.PI / 4;
           this.effectGroup.add(marker);
@@ -682,7 +805,7 @@
           new THREE.Vector3(minX, 4, minZ)
         ];
         const geom = new THREE.BufferGeometry().setFromPoints(points);
-        const line = new THREE.Line(geom, new THREE.LineBasicMaterial({ color: 0x9bd3ff }));
+        const line = new THREE.Line(geom, this.materials.selectionBox);
         this.overlayGroup.add(line);
       }
 
@@ -693,21 +816,51 @@
         return mesh;
       }
 
+      // ── clearGroup: 공유 캐시 대상은 dispose 하지 않음 ─────────────
+      // 캐시된 material/geometry 집합을 미리 계산해 두고, 그 외의 것만 dispose
+      _isCachedMaterial(mat) {
+        if (!mat) return false;
+        // this.materials, buildingTypeMats, factionMatCache, gearMatCache, labelCache 내부 material 포함
+        if (Object.values(this.materials).includes(mat)) return true;
+        for (const ts of Object.values(this.buildingTypeMats)) {
+          if (ts.body === mat || ts.accent === mat) return true;
+        }
+        if (this.factionMatCache && [...this.factionMatCache.values()].includes(mat)) return true;
+        if (this.gearMatCache && [...this.gearMatCache.values()].includes(mat)) return true;
+        if (this.labelCache && [...this.labelCache.values()].includes(mat)) return true;
+        return false;
+      }
+
+      _isCachedGeometry(geom) {
+        if (!geom) return false;
+        return Object.values(this.geometries).includes(geom);
+      }
+
+      _disposeObject(obj) {
+        // 자식 먼저 재귀 처리
+        if (obj.children && obj.children.length) {
+          // 역순 복사 후 처리 (children은 live array)
+          const kids = [...obj.children];
+          for (const child of kids) this._disposeObject(child);
+        }
+        if (obj.geometry && !this._isCachedGeometry(obj.geometry)) {
+          obj.geometry.dispose();
+        }
+        if (obj.material) {
+          const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+          for (const mat of mats) {
+            if (!this._isCachedMaterial(mat)) {
+              if (mat.map) mat.map.dispose();
+              mat.dispose();
+            }
+          }
+        }
+      }
+
       clearGroup(group) {
         while (group.children.length) {
           const child = group.children.pop();
-          if (child.geometry && !Object.values(this.geometries).includes(child.geometry)) child.geometry.dispose();
-          if (child.material && !Object.values(this.materials).includes(child.material)) {
-            if (Array.isArray(child.material)) {
-              child.material.forEach(mat => {
-                if (mat.map) mat.map.dispose();
-                mat.dispose();
-              });
-            } else {
-              if (child.material.map) child.material.map.dispose();
-              child.material.dispose();
-            }
-          }
+          this._disposeObject(child);
         }
       }
     }

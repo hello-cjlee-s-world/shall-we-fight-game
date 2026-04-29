@@ -1,4 +1,4 @@
-﻿    // ─── Faction ─────────────────────────────────────────────────
+    // ─── Faction ─────────────────────────────────────────────────
     class Faction {
       constructor(id, def) {
         this.id = id;
@@ -139,14 +139,24 @@
         if (contenders.length) {
           contenders.sort((a, b) => groups[b] - groups[a]);
           const top = contenders[0];
-          this.captureFaction = game.factions[top];
+          const incomingFaction = game.factions[top];
+
+          // 점령 시도 세력이 바뀌었으면 progress 초기화
+          // (예: 적이 90% 쌓은 게이지를 플레이어가 그대로 이어받는 것 방지)
+          if (this.captureFaction && this.captureFaction.id !== incomingFaction.id) {
+            this.captureProgress = 0;
+          }
+
+          this.captureFaction = incomingFaction;
           this.captureProgress += dt * groups[top] * 18;
           if (this.captureProgress >= 100) {
             this.faction = this.captureFaction;
             this.captureProgress = 0;
+            this.captureFaction = null;
             game.log(this.type + " 점령: " + this.faction.name);
           }
         } else {
+          // 점령 시도 세력 없음: 게이지 감산, 0이 되면 captureFaction 해제
           this.captureProgress = Math.max(0, this.captureProgress - dt * 10);
           if (this.captureProgress === 0) this.captureFaction = null;
         }
@@ -187,5 +197,3 @@
         }
       }
     }
-
-

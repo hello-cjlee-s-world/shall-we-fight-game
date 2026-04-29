@@ -1,14 +1,16 @@
-﻿    // ─── DialogueSystem ──────────────────────────────────────────
+    // ─── DialogueSystem ──────────────────────────────────────────
     class DialogueSystem {
       constructor(game) {
         this.game = game;
         this.activeTarget = null;
+        this.activeSpeaker = null;   // speaker도 추적해야 close()에서 상태 복구 가능
         this.textEl = document.getElementById("dialogueText");
         this.rewardBtn = document.getElementById("rewardBtn");
         document.querySelectorAll("[data-choice]").forEach(btn => {
           btn.addEventListener("click", () => this.choose(btn.dataset.choice));
         });
       }
+
       tryOpen() {
         const speaker = this.game.selectedUnits.find(u => u.faction.id === "player");
         if (!speaker) return;
@@ -19,22 +21,47 @@
           this.textEl.textContent = "근처에 대화할 캐릭터가 없습니다.";
           return;
         }
-        this.activeTarget = target;
+        // 이미 다른 대화가 열려 있으면 먼저 정리
+        if (this.activeTarget) this.close();
+
+        this.activeTarget  = target;
+        this.activeSpeaker = speaker;
         speaker.state = "talking";
-        target.state = "talking";
+        target.state  = "talking";
         this._refreshRewardBtn();
         this.textEl.textContent = target.name + " (" + target.role + ")와 대화 중. 충성도 " + Math.round(target.loyalty);
       }
+
+      // ── 대화 종료 공통 정리 함수 ──────────────────────────────────
+      // 모든 대화 종료 경로(성공·실패·ESC·대상 사망·재시작)에서 반드시 호출
+      close(reason) {
+        if (this.activeSpeaker && this.activeSpeaker.hp > 0 && this.activeSpeaker.state === "talking") {
+          this.activeSpeaker.state = "idle";
+        }
+        if (this.activeTarget && this.activeTarget.hp > 0 && this.activeTarget.state === "talking") {
+          this.activeTarget.state = "idle";
+        }
+        this.activeSpeaker = null;
+        this.activeTarget  = null;
+        if (reason !== "silent") {
+          this.textEl.textContent = "대화 가능 대상 근처에서 E 키를 누르세요.";
+        }
+      }
+
       // Gold 부족 시 보상 버튼 비활성화
       _refreshRewardBtn() {
         this.rewardBtn.disabled = this.game.factions.player.gold < 25;
         this.rewardBtn.title = this.rewardBtn.disabled ? "Gold 부족 (25 필요)" : "";
       }
+
       choose(choice) {
-        const target = this.activeTarget;
-        if (!target || target.hp <= 0) return;
-        const speaker = this.game.selectedUnits.find(u => u.faction.id === "player");
-        if (!speaker) return;
+        const target  = this.activeTarget;
+        const speaker = this.activeSpeaker;
+
+        // 대화 대상 또는 speaker가 이미 사라진 경우 즉시 정리
+        if (!target || target.hp <= 0) { this.close(); return; }
+        if (!speaker || speaker.hp <= 0) { this.close(); return; }
+
         const hard = target.faction.id === "neutral" ? 1 : 0.55;
         let delta = 0;
         if (choice === "friendly") delta = (speaker.persuasion + randInt(6, 15)) * hard;
@@ -48,16 +75,30 @@
           }
         }
         target.loyalty = clamp(target.loyalty + delta, -30, 120);
+
         if (target.loyalty >= 75) {
+          // ── 회유 성공: 세력 전환 후 대화 종료
           target.faction = this.game.factions.player;
-          target.target = null;
-          target.state = "idle";
+          target.target  = null;
           this.textEl.textContent = target.name + " 합류! 이제 푸른 연맹 소속입니다.";
           this.game.log(target.name + " 회유 성공");
-          this.activeTarget = null;
+          this.close("silent");   // textEl은 이미 위에서 설정했으므로 silent
         } else {
+          // ── 회유 진행 중: 대화 유지
           this._refreshRewardBtn();
           this.textEl.textContent = target.name + " 충성도 변화: " + Math.round(target.loyalty) + "/75";
+        }
+      }
+
+      // ── 매 프레임 상태 검증 ────────────────────────────────────────
+      // 대화 중 target/speaker가 전투 등으로 사망하면 자동 종료
+      tick() {
+        if (!this.activeTarget && !this.activeSpeaker) return;
+        const targetDead  = !this.activeTarget  || this.activeTarget.hp  <= 0;
+        const speakerDead = !this.activeSpeaker || this.activeSpeaker.hp <= 0;
+        if (targetDead || speakerDead) {
+          this.game.log("대화 중단: 대상 전투 불능");
+          this.close();
         }
       }
     }
@@ -163,9 +204,14 @@
       onKey(e) {
         const key = e.key.toLowerCase();
         this.keys.add(key);
-        if (e.key === "Escape") this.game.clearSelection();
+        if (e.key === "Escape") {
+          // ESC: 대화 중이면 대화를 먼저 닫고, 그 외엔 선택 해제
+          if (this.game.dialogue.activeTarget) {
+            this.game.dialogue.close();
+          } else {
+            this.game.clearSelection();
+          }
+        }
         if (key === "e") this.game.dialogue.tryOpen();
       }
     }
-
-

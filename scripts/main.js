@@ -1,4 +1,4 @@
-﻿    // ─── Game ─────────────────────────────────────────────────────
+    // ─── Game ─────────────────────────────────────────────────────
     class Game {
       constructor() {
         this.canvas = document.getElementById("game");
@@ -69,6 +69,9 @@
 
       // 게임 재시작: 전체 상태를 리셋하고 새 세계 생성
       restartGame() {
+        // 재시작 전 열린 대화가 있으면 정리 (silent: textEl은 아래서 초기화)
+        this.dialogue.close("silent");
+
         this.units = [];
         this.buildings = [];
         this.selectedUnits = [];
@@ -89,7 +92,6 @@
         this.createWorld();
         this.updateCamera(1);
         this.ai = [new AIController(this, this.factions.enemyA)];
-        this.dialogue.activeTarget = null;
         document.getElementById("dialogueText").textContent = "대화 가능 대상 근처에서 E 키를 누르세요.";
         this.showStartScreen();
         this.log("새 작전 시작: 건물을 점령하고 적 세력을 제압하세요.");
@@ -192,6 +194,8 @@
         this.updateCamera(dt);
         this.flashTimer += dt;
         if (this.flashTimer > 0.12) { this.flashTarget = null; this.flashTimer = 0; }
+        // 대화 중 대상 사망 감지 — 매 프레임 체크
+        this.dialogue.tick();
         this.checkEndConditions();
       }
 
@@ -286,7 +290,16 @@
         this.selectedUnits = this.units.filter(u => u.faction.id==="player" && u.x>=minX && u.x<=maxX && u.y>=minY && u.y<=maxY);
         this.selectedUnits.forEach(u => u.selected = true);
       }
-      clearSelection() { this.selectedUnits.forEach(u => u.selected = false); this.selectedUnits = []; }
+
+      clearSelection() {
+        // 선택 해제 시 대화 중인 speaker가 선택에 포함돼 있으면 대화도 함께 종료
+        if (this.dialogue && this.dialogue.activeSpeaker &&
+            this.selectedUnits.includes(this.dialogue.activeSpeaker)) {
+          this.dialogue.close();
+        }
+        this.selectedUnits.forEach(u => u.selected = false);
+        this.selectedUnits = [];
+      }
 
       issueRightClick(x, y) {
         if (!this.selectedUnits.length) return;
@@ -349,6 +362,8 @@
       }
       endGame(text) {
         this.gameOver = true;
+        // 게임 종료 시 열린 대화 정리
+        this.dialogue.close("silent");
         const overlay = document.getElementById("overlay");
         overlay.style.display = "flex";
         document.getElementById("overlayText").textContent = text;
@@ -435,5 +450,3 @@
     }
 
     new Game();
-
-

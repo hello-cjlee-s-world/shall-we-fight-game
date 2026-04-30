@@ -33,18 +33,25 @@
 - 감산 분기(`contenders` 없음)의 동작은 그대로 유지: 게이지를 dt * 10씩 감산, 0이 되면 `captureFaction = null`.
 
 ### 3. ~~렌더러 메모리 누수 수정~~ ✅ 완료 (2026-04-29)
+### 3-2. ~~renderer factionMat / labelTexture 캐시 개선~~ ✅ 완료 (2026-04-30)
 
 - 위치: `scripts/renderer.js`
 - **수정 완료.** 아래 내용은 기록 목적으로만 남겨둔다.
 
-변경 내용:
+변경 내용 (2026-04-30 개선):
 
-- 건물 `bodyMat` / `accentMat`를 타입별로 `buildingTypeMats`에 사전 생성, 재사용.
-- 세력 color material을 `factionMatCache: Map<colorHex, Material>`로 캐시.
-- 유닛 `gearMat`을 `gearMatCache: Map<colorHex, Material>`로 캐시.
-- 유닛 라벨 CanvasTexture를 `labelCache: Map<roleString, SpriteMaterial>`로 캐시 (매 프레임 canvas 생성 제거).
-- `drawBuilding` / `addUnitModel`의 인라인 geometry 생성을 `createGeometries()`로 이동.
-- `clearGroup()`을 `_disposeObject()`로 교체해 Group 중첩 구조도 재귀 dispose하되, 캐시된 geometry/material은 건드리지 않도록 보호.
+- **캐시 Map 용도별 분리** — 이전에는 `factionMatCache` 하나에 faction std / vision ring / capture bar / mage orb 등 이종 material을 prefix string key(`"vision_"`, `"mage_orb_"` 등)로 혼재시켰음. 용도마다 전용 Map으로 분리해 코드 가독성과 유지보수성 향상.
+  - `_factionStdCache`  — 건물 지붕·배너, 유닛 몸체 (MeshStandardMaterial)
+  - `_gearStdCache`     — 유닛 장비·머리카락 (MeshStandardMaterial)
+  - `_visionMatCache`   — 감시탑 vision ring (투명 MeshBasicMaterial)
+  - `_captureMatCache`  — 점령 게이지 fill (MeshBasicMaterial)
+  - `_mageOrbMatCache`  — 마법사 orb (투명 MeshBasicMaterial)
+  - `_labelCache`       — 유닛 라벨 `{ texture, material }` (role → SpriteMaterial)
+- **`_cachedMatSet: Set`** — 캐시된 material 전체를 하나의 Set으로 관리. `_disposeObject()` 에서 `_isCachedMaterial()` 조회 시 Map 전체를 배열로 변환하던 O(n) 비용을 O(1)로 개선. `_cacheAndRegister(map, key, mat)` 헬퍼로 Map 등록과 Set 등록을 동시에 수행.
+- **`_cachedGeomSet: Set`** — geometry도 동일하게 Set 조회로 교체. `Object.values(this.geometries).includes(geom)` → `this._cachedGeomSet.has(geom)`.
+- **effect mesh pool** — `drawEffect()`가 매 프레임 `new THREE.MeshBasicMaterial()`을 생성하던 것을 `_effectPool` 배열로 교체. 프레임마다 `_effectPoolIdx`를 0으로 리셋하고 `_acquireEffectMesh()`로 기존 mesh를 빌려와 `material.color`·`material.opacity`만 업데이트해 재사용. pool size가 부족하면 자동 확장.
+- **`healerGlow`, `watchBeacon` material** — `drawBuilding()` 내부의 `if (!this.materials.xxx)` 조건부 생성을 `createMaterials()`로 이동해 일괄 초기화.
+- **`_labelCache` texture 분리 보관** — 캐시 entry를 `{ texture, material }` 구조로 저장해 추후 texture만 교체하거나 `texture.dispose()`를 독립적으로 호출할 수 있도록 준비.
 
 ---
 
@@ -213,3 +220,4 @@
 | 2026-04-29 | 렌더러 메모리 누수 수정 (material/geometry/texture 캐시, clearGroup 재귀 dispose) |
 | 2026-04-29 | 대화 상태 정리 (DialogueSystem.close(), tick(), ESC·사망·재시작·종료 경로 전체 적용) |
 | 2026-04-29 | 건물 점령 progress 세력 교체 시 초기화 (captureFaction 변경 감지 + 완료 후 null 처리) |
+| 2026-04-30 | renderer factionMat/labelTexture 캐시 개선 (용도별 Map 분리, Set O(1) 조회, effect pool) |

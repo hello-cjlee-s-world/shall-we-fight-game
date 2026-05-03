@@ -37,6 +37,8 @@
         this.attackAnim = 0;
         this.attackAngle = 0;
         this.manualMove = false;
+        this.chasePath = [];   // 전투 추적용 A* 경로
+        this.chaseTimer = 0;   // 추적 경로 재계산 쿨다운
       }
       get tileX() { return Math.floor(this.x / TILE_SIZE); }
       get tileY() { return Math.floor(this.y / TILE_SIZE); }
@@ -44,6 +46,8 @@
       commandMove(path) {
         this.target = null;
         this.path = path;
+        this.chasePath = [];
+        this.chaseTimer = 0;
         this.state = path.length ? "moving" : "idle";
         this.moveMarker = path[path.length - 1] || null;
         this.manualMove = path.length > 0;
@@ -51,6 +55,8 @@
       commandAttack(target) {
         this.manualMove = false;
         this.target = target;
+        this.chasePath = [];
+        this.chaseTimer = 0;
         this.state = "attacking";
       }
       update(dt, game) {
@@ -73,6 +79,7 @@
         if (this.state === "attacking" && this.target && this.target.hp > 0) {
           const d = dist(this, this.target);
           if (d <= this.attackRange) {
+            this.chasePath = []; // 사거리 내 도달 — 추적 경로 정리
             if (this.attackCooldown <= 0) {
               const tile = game.map.get(this.target.tileX, this.target.tileY);
               const mitigation = this.target.defense + (tile ? tile.defenseBonus : 0);
@@ -86,7 +93,26 @@
               if (this.target.hp <= 0) game.log(this.target.name + " 전투 불능");
             }
           } else {
-            this.moveToward(this.target.x, this.target.y, dt, game);
+            // 사거리 밖: A* 로 추적 경로 갱신
+            this.chaseTimer = Math.max(0, this.chaseTimer - dt);
+            const targetTileChanged =
+              this.chasePath.length === 0 ||
+              this.chaseTimer <= 0;
+            if (targetTileChanged) {
+              const newPath = game.map.findPath(
+                this.tileX, this.tileY,
+                this.target.tileX, this.target.tileY
+              );
+              if (newPath.length > 0) this.chasePath = newPath;
+              this.chaseTimer = 0.8;
+            }
+            if (this.chasePath.length > 0) {
+              const next = this.chasePath[0];
+              if (this.moveToward(next.x, next.y, dt, game)) this.chasePath.shift();
+            } else {
+              // A* 경로를 구하지 못한 경우(완전 고립) 직선 이동으로 폴백
+              this.moveToward(this.target.x, this.target.y, dt, game);
+            }
           }
         } else if (this.path.length) {
           const next = this.path[0];

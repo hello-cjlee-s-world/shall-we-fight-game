@@ -98,56 +98,83 @@
       }
 
       createWorld() {
-        const occupied = new Set();
-        const reserve = tile => occupied.add(tileKey(tile.x, tile.y));
-        const isFree = tile => tile && tile.walkable && !occupied.has(tileKey(tile.x, tile.y));
-        const tileDistance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-        const randomFreeTile = (options = {}) => {
-          const minFrom = options.minFrom || [];
-          const minDistance = options.minDistance || 0;
-          const edgePadding = options.edgePadding ?? 1;
-          for (let i = 0; i < 1500; i++) {
-            const tile = this.map.randomWalkableTile(this.buildings);
-            if (!isFree(tile)) continue;
-            if (tile.x < edgePadding || tile.y < edgePadding || tile.x >= MAP_W - edgePadding || tile.y >= MAP_H - edgePadding) continue;
-            if (minFrom.some(other => tileDistance(tile, other) < minDistance)) continue;
-            reserve(tile);
-            return tile;
+        // 맵 재시도 헬퍼 함수들을 루프 밖에 선언해 유닛 스폰에서도 사용
+        let occupied, reserve, isFree, randomFreeTile, randomNear;
+        let playerBase, enemyBase, neutralBase;
+        const MAX_ATTEMPTS = 10;
+
+        for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+          // 첫 시도 이후에는 새 맵을 생성하고 건물 목록도 초기화
+          if (attempt > 0) {
+            this.map = new GameMap();
+            this.buildings = [];
+            this.buildingSeq = 1;
           }
-          for (let y = 0; y < MAP_H; y++) {
-            for (let x = 0; x < MAP_W; x++) {
-              const tile = this.map.get(x, y);
+
+          occupied = new Set();
+          reserve = tile => occupied.add(tileKey(tile.x, tile.y));
+          isFree = tile => tile && tile.walkable && !occupied.has(tileKey(tile.x, tile.y));
+          const tileDistance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+          randomFreeTile = (options = {}) => {
+            const minFrom = options.minFrom || [];
+            const minDistance = options.minDistance || 0;
+            const edgePadding = options.edgePadding ?? 1;
+            for (let i = 0; i < 1500; i++) {
+              const tile = this.map.randomWalkableTile(this.buildings);
+              if (!isFree(tile)) continue;
+              if (tile.x < edgePadding || tile.y < edgePadding || tile.x >= MAP_W - edgePadding || tile.y >= MAP_H - edgePadding) continue;
+              if (minFrom.some(other => tileDistance(tile, other) < minDistance)) continue;
+              reserve(tile);
+              return tile;
+            }
+            for (let y = 0; y < MAP_H; y++) {
+              for (let x = 0; x < MAP_W; x++) {
+                const tile = this.map.get(x, y);
+                if (isFree(tile)) { reserve(tile); return tile; }
+              }
+            }
+            return this.map.get(1, 1);
+          };
+          randomNear = center => {
+            const offsets = [];
+            for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) offsets.push([dx, dy]);
+            offsets.sort(() => Math.random() - 0.5);
+            for (const [dx, dy] of offsets) {
+              const tile = this.map.get(center.x+dx, center.y+dy);
               if (isFree(tile)) { reserve(tile); return tile; }
             }
+            return randomFreeTile();
+          };
+
+          // 건물 배치
+          [
+            BuildingType.BARRACKS, BuildingType.BARRACKS,
+            BuildingType.HEALER,   BuildingType.HEALER,
+            BuildingType.WATCH,    BuildingType.WATCH,
+            BuildingType.MINE,     BuildingType.MINE, BuildingType.MINE,
+            BuildingType.FORTRESS
+          ].forEach(type => {
+            const tile = randomFreeTile({ edgePadding: 2 });
+            this.buildings.push(new Building(this.buildingSeq++, type, tile, this.factions.neutral));
+          });
+
+          playerBase  = randomFreeTile({ edgePadding: 2 });
+          enemyBase   = randomFreeTile({ edgePadding: 2, minFrom: [playerBase], minDistance: 18 });
+          neutralBase = randomFreeTile({ edgePadding: 2, minFrom: [playerBase, enemyBase], minDistance: 5 });
+
+          // 연결성 확인: 플레이어 기지, 적 기지, 성채가 같은 walkable 영역에 있어야 함
+          const fortress = this.buildings.find(b => b.type === BuildingType.FORTRESS);
+          const checkPoints = [playerBase, enemyBase, { x: fortress.x, y: fortress.y }];
+          if (this.map.isConnected(checkPoints)) break;
+
+          // 마지막 시도에도 연결되지 않으면 경고 후 현재 맵 사용
+          if (attempt === MAX_ATTEMPTS - 1) {
+            console.warn("[createWorld] 맵 연결성 검증 실패 ("
+              + MAX_ATTEMPTS + "회 시도) — 현재 맵 그대로 사용");
           }
-          return this.map.get(1, 1);
-        };
-        const randomNear = center => {
-          const offsets = [];
-          for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) offsets.push([dx, dy]);
-          offsets.sort(() => Math.random() - 0.5);
-          for (const [dx, dy] of offsets) {
-            const tile = this.map.get(center.x+dx, center.y+dy);
-            if (isFree(tile)) { reserve(tile); return tile; }
-          }
-          return randomFreeTile();
-        };
+        }
 
-        [
-          BuildingType.BARRACKS, BuildingType.BARRACKS,
-          BuildingType.HEALER,   BuildingType.HEALER,
-          BuildingType.WATCH,    BuildingType.WATCH,
-          BuildingType.MINE,     BuildingType.MINE, BuildingType.MINE,
-          BuildingType.FORTRESS
-        ].forEach(type => {
-          const tile = randomFreeTile({ edgePadding: 2 });
-          this.buildings.push(new Building(this.buildingSeq++, type, tile, this.factions.neutral));
-        });
-
-        const playerBase = randomFreeTile({ edgePadding: 2 });
-        const enemyBase  = randomFreeTile({ edgePadding: 2, minFrom: [playerBase], minDistance: 18 });
-        const neutralBase = randomFreeTile({ edgePadding: 2, minFrom: [playerBase, enemyBase], minDistance: 5 });
-
+        // 유닛 스폰은 유효한 맵이 확정된 이후 단 1회만 실행
         for (let i = 0; i < 4; i++) this.spawnUnit(this.factions.player,  i===0 ? playerBase  : randomNear(playerBase));
         for (let i = 0; i < 4; i++) this.spawnUnit(this.factions.enemyA,  i===0 ? enemyBase   : randomNear(enemyBase));
         for (let i = 0; i < 7; i++) this.spawnUnit(this.factions.neutral, i===0 ? neutralBase : randomFreeTile({ edgePadding: 1 }));

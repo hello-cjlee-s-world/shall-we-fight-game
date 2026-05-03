@@ -39,6 +39,33 @@
         }
         return this.get(1, 1);
       }
+      // BFS — startX/startY 로부터 도달 가능한 walkable 타일 key Set 반환
+      walkableComponent(startX, startY) {
+        const visited = new Set();
+        const start = this.get(startX, startY);
+        if (!start || !start.walkable) return visited;
+        visited.add(tileKey(startX, startY));
+        const queue = [[startX, startY]];
+        const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+        while (queue.length) {
+          const [cx, cy] = queue.shift();
+          for (const [dx, dy] of dirs) {
+            const nx = cx + dx, ny = cy + dy;
+            const k = tileKey(nx, ny);
+            if (!visited.has(k) && this.inBounds(nx, ny) && this.get(nx, ny).walkable) {
+              visited.add(k);
+              queue.push([nx, ny]);
+            }
+          }
+        }
+        return visited;
+      }
+      // points: [{x, y}, ...] 가 모두 같은 walkable component인지 확인
+      isConnected(points) {
+        if (points.length < 2) return true;
+        const component = this.walkableComponent(points[0].x, points[0].y);
+        return points.slice(1).every(p => component.has(tileKey(p.x, p.y)));
+      }
       // A* with MinHeap — O(n log n)
       findPath(startX, startY, endX, endY) {
         if (!this.inBounds(endX, endY) || !this.get(endX, endY).walkable) return [];

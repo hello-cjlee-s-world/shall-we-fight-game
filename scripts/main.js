@@ -327,6 +327,7 @@
       }
 
       issueRightClick(x, y) {
+        if (!this.started || this.gameOver) return;
         if (!this.selectedUnits.length) return;
         const targetUnit = this.units.find(u => u.faction.id !== "player" && Math.hypot(u.x-x, u.y-y) < 18);
         if (targetUnit) {

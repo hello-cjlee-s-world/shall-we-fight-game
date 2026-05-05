@@ -103,16 +103,16 @@
 
 ## 중간 — UX / 코드 품질
 
-### 8. 시작 전 / 게임 종료 후 입력 정책 정리
+### ~~8. 시작 전 / 게임 종료 후 입력 정책 정리~~ ✅ 완료 (2026-05-05)
 
 - 위치: `scripts/main.js` → `issueRightClick()`, `scripts/systems.js` → `InputManager.onKey()`
-- `issueRightClick()`, `dialogue.tryOpen()`에 `started && !gameOver` 가드가 없다.
-- 시작 전에도 이동·공격·대화 명령이 내부 상태를 변경할 수 있다.
+- **수정 완료.** 아래 내용은 기록 목적으로만 남겨둔다.
 
-권장 수정:
+변경 내용:
 
-- `InputManager` 또는 `Game.issueRightClick()` 진입부에서 `started && !gameOver`를 확인한다.
-- 시작 전에는 카메라 이동과 유닛 선택만 허용할지, 모든 입력을 막을지 정책을 정한다.
+- `issueRightClick()` 진입부에 `!this.started || this.gameOver` 가드 추가 — 시작 전·종료 후 이동·공격 명령 차단.
+- `onKey()` 의 `e` 키 처리에 `started && !gameOver` 조건 추가 — 시작 전·종료 후 대화 명령 차단.
+- 카메라 이동과 유닛 선택은 시작 전에도 허용한다.
 
 ### 9. 유닛 생산 위치 점유 검사
 
@@ -222,3 +222,4 @@
 | 2026-05-05 | 전투 추적 이동 A* 적용 (attacking 분기에서 일정 주기 경로 갱신) |
 | 2026-05-05 | 랜덤 맵 연결성 검증 (BFS로 플레이어·적·성채 같은 component 확인, 실패 시 재생성) |
 | 2026-05-05 | resolveCollisions 공간 해시 이중 구성 제거 (update()에서 구성한 해시 재사용) |
+| 2026-05-05 | 시작 전/종료 후 입력 가드 추가 (issueRightClick, onKey E키에 started && !gameOver 체크) |

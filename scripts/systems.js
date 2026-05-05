@@ -212,6 +212,6 @@
             this.game.clearSelection();
           }
         }
-        if (key === "e") this.game.dialogue.tryOpen();
+        if (key === "e" && this.game.started && !this.game.gameOver) this.game.dialogue.tryOpen();
       }
     }

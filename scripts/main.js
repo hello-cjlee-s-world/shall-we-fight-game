@@ -287,8 +287,6 @@
 
       // 충돌 처리: SpatialHash 활용해 O(n) 수준으로 개선
       resolveCollisions() {
-        this.spatialHash.clear();
-        this.units.forEach(u => { if (u.hp > 0) this.spatialHash.insert(u); });
         for (const a of this.units) {
           if (a.hp <= 0) continue;
           const nearby = this.spatialHash.query(a.x, a.y, 20);
@@ -329,6 +327,7 @@
       }
 
       issueRightClick(x, y) {
+        if (!this.started || this.gameOver) return;
         if (!this.selectedUnits.length) return;
         const targetUnit = this.units.find(u => u.faction.id !== "player" && Math.hypot(u.x-x, u.y-y) < 18);
         if (targetUnit) {

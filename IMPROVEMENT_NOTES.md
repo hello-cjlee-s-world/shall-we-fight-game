@@ -57,38 +57,36 @@
 
 ## 높음 — 게임플레이 결함
 
-### 4. 전투 추적 이동에 A* 적용
+### ~~4. 전투 추적 이동에 A* 적용~~ ✅ 완료 (2026-05-05)
 
 - 위치: `scripts/entities.js` → `Unit.update()` attacking 분기
-- 일반 이동 명령은 `GameMap.findPath()`를 사용하지만, 공격 대상 추적은 `moveToward(target.x, target.y)` 직선 이동을 사용한다.
-- 전투 추적 중 물·산 타일 등 이동 불가 지형을 우회하지 못하고 통과하거나 막힐 수 있다.
+- **수정 완료.** 아래 내용은 기록 목적으로만 남겨둔다.
 
-권장 수정:
+변경 내용:
 
-- 공격 대상 추적도 일정 주기(예: 0.8초)마다 target tile로 A* 경로를 갱신한다.
+- 공격 대상 추적에도 일정 주기마다 target tile로 A* 경로를 갱신하도록 수정했다.
 - 대상이 이동했거나 기존 경로가 비었을 때만 재계산한다.
 
-### 5. 랜덤 맵 연결성 검증 추가
+### ~~5. 랜덤 맵 연결성 검증 추가~~ ✅ 완료 (2026-05-05)
 
 - 위치: `scripts/map.js` → `GameMap.generate()`, `scripts/main.js` → `createWorld()`
-- walkable 영역 연결성을 보장하지 않아 플레이어 base, 적 base, 성채가 서로 도달 불가능한 영역에 배치될 수 있다.
-- 이 경우 승패 조건 달성 자체가 불가능한 맵이 생성된다.
+- **수정 완료.** 아래 내용은 기록 목적으로만 남겨둔다.
 
-권장 수정:
+변경 내용:
 
-- 맵 생성 후 BFS/flood fill로 walkable component를 계산한다.
-- 플레이어 base, enemy base, fortress, 주요 건물이 같은 component에 있는지 확인한다.
-- 실패하면 맵을 재생성하거나 핵심 지점 주변의 물 타일을 평지로 보정한다.
+- 맵 생성 후 BFS로 walkable component를 계산한다.
+- 플레이어 base, enemy base, 성채가 같은 component에 있는지 확인한다.
+- 실패하면 맵을 재생성한다.
 
-### 6. resolveCollisions 내부 공간 해시 이중 구성 제거
+### ~~6. resolveCollisions 내부 공간 해시 이중 구성 제거~~ ✅ 완료 (2026-05-05)
 
 - 위치: `scripts/main.js` → `update()`, `resolveCollisions()`
-- `Game.update()` 첫 줄에서 spatialHash를 clear+insert한 뒤, `resolveCollisions()` 내부에서 또다시 clear+insert한다.
-- 한 프레임에 공간 해시를 두 번 구성하는 낭비다.
+- **수정 완료.** 아래 내용은 기록 목적으로만 남겨둔다.
 
-권장 수정:
+변경 내용:
 
-- `resolveCollisions()` 내부의 clear/insert를 제거하고, `update()`에서 이미 구성된 해시를 그대로 사용한다.
+- `resolveCollisions()` 내부의 `spatialHash.clear()` + `insert` 2줄을 제거했다.
+- `update()`에서 이미 구성된 해시를 그대로 사용한다.
 
 ### 7. Three.js CDN 의존성 — 오프라인 환경 및 로드 실패 대응
 
@@ -105,16 +103,16 @@
 
 ## 중간 — UX / 코드 품질
 
-### 8. 시작 전 / 게임 종료 후 입력 정책 정리
+### ~~8. 시작 전 / 게임 종료 후 입력 정책 정리~~ ✅ 완료 (2026-05-05)
 
 - 위치: `scripts/main.js` → `issueRightClick()`, `scripts/systems.js` → `InputManager.onKey()`
-- `issueRightClick()`, `dialogue.tryOpen()`에 `started && !gameOver` 가드가 없다.
-- 시작 전에도 이동·공격·대화 명령이 내부 상태를 변경할 수 있다.
+- **수정 완료.** 아래 내용은 기록 목적으로만 남겨둔다.
 
-권장 수정:
+변경 내용:
 
-- `InputManager` 또는 `Game.issueRightClick()` 진입부에서 `started && !gameOver`를 확인한다.
-- 시작 전에는 카메라 이동과 유닛 선택만 허용할지, 모든 입력을 막을지 정책을 정한다.
+- `issueRightClick()` 진입부에 `!this.started || this.gameOver` 가드 추가 — 시작 전·종료 후 이동·공격 명령 차단.
+- `onKey()` 의 `e` 키 처리에 `started && !gameOver` 조건 추가 — 시작 전·종료 후 대화 명령 차단.
+- 카메라 이동과 유닛 선택은 시작 전에도 허용한다.
 
 ### 9. 유닛 생산 위치 점유 검사
 
@@ -221,3 +219,7 @@
 | 2026-04-29 | 대화 상태 정리 (DialogueSystem.close(), tick(), ESC·사망·재시작·종료 경로 전체 적용) |
 | 2026-04-29 | 건물 점령 progress 세력 교체 시 초기화 (captureFaction 변경 감지 + 완료 후 null 처리) |
 | 2026-04-30 | renderer factionMat/labelTexture 캐시 개선 (용도별 Map 분리, Set O(1) 조회, effect pool) |
+| 2026-05-05 | 전투 추적 이동 A* 적용 (attacking 분기에서 일정 주기 경로 갱신) |
+| 2026-05-05 | 랜덤 맵 연결성 검증 (BFS로 플레이어·적·성채 같은 component 확인, 실패 시 재생성) |
+| 2026-05-05 | resolveCollisions 공간 해시 이중 구성 제거 (update()에서 구성한 해시 재사용) |
+| 2026-05-05 | 시작 전/종료 후 입력 가드 추가 (issueRightClick, onKey E키에 started && !gameOver 체크) |

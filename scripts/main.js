@@ -190,11 +190,16 @@
         const candidates = [[0,1],[1,0],[-1,0],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]];
         for (const [dx, dy] of candidates) {
           const tile = this.map.get(tx+dx, ty+dy);
-          if (tile && tile.walkable) {
-            this.log(faction.name + " 신규 유닛 생산");
-            return this.spawnUnit(faction, tile);
-          }
+          if (!tile || !tile.walkable) continue;
+          // 해당 타일에 이미 유닛이 있으면 건너뜀
+          const occupied = this.units.some(u => u.hp > 0 && u.tileX === tile.x && u.tileY === tile.y);
+          if (occupied) continue;
+          this.log(faction.name + " 신규 유닛 생산");
+          return this.spawnUnit(faction, tile);
         }
+        // 모든 후보 타일이 막혀 있으면 생산 보류
+        this.log(faction.name + " 병영 주변이 막혀 생산 보류");
+        return null;
       }
 
       loop(now) {

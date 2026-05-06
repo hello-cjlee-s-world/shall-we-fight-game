@@ -201,8 +201,14 @@
             this.spawnTimer -= dt;
             if (this.spawnTimer <= 0 && this.faction.gold >= 30) {
               this.faction.gold -= 30;
-              game.spawnUnitNear(this.faction, this.x, this.y);
-              this.spawnTimer = 13;
+              const spawned = game.spawnUnitNear(this.faction, this.x, this.y);
+              if (spawned) {
+                this.spawnTimer = 13;
+              } else {
+                // 주변이 막혀 생산 실패 — gold 환급 후 3초 뒤 재시도
+                this.faction.gold += 30;
+                this.spawnTimer = 3;
+              }
             }
           }
           // 성채: 플레이어 / 적 각각 점령 시간 누적 (대칭 승패 조건)

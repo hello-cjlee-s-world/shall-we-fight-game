@@ -19,15 +19,6 @@
 
 ### 🟡 중간
 
-#### 10. 로그 DOM 갱신 방식 정리
-
-- 위치: `scripts/main.js` → `updateUI()`
-- 유닛/건물 패널은 DOM API를 사용하지만 로그 출력은 `innerHTML`을 사용해 방식이 혼재되어 있다.
-- 현재 로그 내용은 내부에서만 생성되므로 XSS 위험은 낮지만, 추후 외부 입력이 포함되면 위험해진다.
-
-권장 수정:
-
-- `logLines.replaceChildren(...)` 방식으로 통일한다.
 
 #### 11. 입력 처리 안정화
 
@@ -116,3 +107,4 @@
 | 2026-05-05 | 6 | resolveCollisions 공간 해시 이중 구성 제거 | `resolveCollisions()` 내부 clear+insert 제거, `update()` 해시 재사용 |
 | 2026-05-05 | 8 | 시작 전/종료 후 입력 가드 추가 | `issueRightClick()`, `onKey()` E키에 `started && !gameOver` 체크 |
 | 2026-05-06 | 9 | 유닛 생산 위치 점유 검사 | `tileX/tileY` 점유 확인, 실패 시 gold 환급·3초 재시도 |
+| 2026-05-08 | 10 | 로그 DOM 갱신 방식 정리 | 로그·건물·유닛 패널 `innerHTML` → `replaceChildren()` 전체 통일 |

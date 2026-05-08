@@ -412,14 +412,18 @@
         const fortress = this.buildings.find(b => b.type === BuildingType.FORTRESS);
         document.getElementById("fortressTimer").textContent = (fortress ? fortress.fortressHeld : 0).toFixed(1) + "s";
         // 로그 (배열 길이가 4로 짧아서 비용 낮음)
-        document.getElementById("logLines").innerHTML = this.logs.map(l => "<div>" + l + "</div>").join("");
+        document.getElementById("logLines").replaceChildren(...this.logs.map(l => {
+          const div = document.createElement("div");
+          div.textContent = l;
+          return div;
+        }));
 
         // 건물 패널 — 세력이 변할 때만 갱신
         const bHash = this.buildings.map(b => b.type + b.faction.id).join("|");
         if (bHash !== this._uiBuildingHash) {
           this._uiBuildingHash = bHash;
           const bd = document.getElementById("buildingDetails");
-          bd.innerHTML = "";
+          bd.replaceChildren();
           for (const b of this.buildings) {
             const row = document.createElement("div");
             row.className = "buildingRow";
@@ -442,7 +446,7 @@
           if (!this.selectedUnits.length) {
             details.textContent = "유닛을 좌클릭하거나 드래그해서 선택하세요.";
           } else {
-            details.innerHTML = "";
+            details.replaceChildren();
             for (const u of this.selectedUnits.slice(0, 6)) {
               // DOM API 사용으로 XSS 방지
               const row1 = document.createElement("div");

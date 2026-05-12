@@ -203,7 +203,14 @@
       }
       onKey(e) {
         const key = e.key.toLowerCase();
+        // 방향키·WASD: 브라우저 스크롤 기본 동작 차단
+        if (["arrowleft","arrowright","arrowup","arrowdown","w","a","s","d"].includes(key)) {
+          e.preventDefault();
+        }
         this.keys.add(key);
+        // 버튼/입력 UI에 포커스가 있으면 게임 단축키 처리 안 함
+        const tag = document.activeElement && document.activeElement.tagName;
+        if (tag === "BUTTON" || tag === "INPUT" || tag === "TEXTAREA") return;
         if (e.key === "Escape") {
           // ESC: 대화 중이면 대화를 먼저 닫고, 그 외엔 선택 해제
           if (this.game.dialogue.activeTarget) {

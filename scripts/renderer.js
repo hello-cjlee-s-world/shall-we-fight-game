@@ -452,6 +452,9 @@
         this.drawSelectionBox();
       }
 
+      // 감시탑 시야 범위를 반투명 링으로 표시한다.
+      // 이 링은 시각적 피드백용이며, 실제 fog of war나 플레이어 시야 제한과는 연결되어 있지 않다.
+      // AI 탐지 반경 보너스는 AIController._watchVisionBonus()에서 별도로 처리된다.
       drawWatchTowerVision() {
         for (const b of this.game.buildings) {
           if (b.type !== BuildingType.WATCH || b.faction.id === "neutral") continue;

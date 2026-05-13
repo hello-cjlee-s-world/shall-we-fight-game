@@ -24,25 +24,6 @@
 
 ### 🟢 낮음
 
-#### 12. `weaponGeometry()` 메서드 데드코드 제거
-
-- 위치: `scripts/renderer.js`
-- `weaponGeometry(u)` 메서드가 정의되어 있으나 `addClassGear()` 내부에서 geometry를 직접 생성하므로 실제로 호출되지 않는다.
-
-권장 수정:
-
-- `weaponGeometry()` 메서드를 제거하거나, `addClassGear()`가 이 메서드를 사용하도록 통일한다.
-
-#### 13. 감시탑 효과와 시야 시스템 분리 준비
-
-- 위치: `scripts/systems.js` → `AIController`, `scripts/renderer.js` → `drawWatchTowerVision()`
-- 감시탑은 AI 탐지 반경 보너스와 시각적 원 표시만 있고, 실제 fog of war나 플레이어 시야 제한 시스템은 없다.
-
-권장 수정:
-
-- 현재 감시탑 효과에 "AI 탐지 보너스"임을 명확히 주석으로 명시한다.
-- 이후 fog of war를 추가한다면 `VisionSystem`처럼 별도 시스템으로 분리한다.
-
 #### 14. HTML/CSS 정리
 
 - 위치: `index.html`, `styles.css`
@@ -98,3 +79,5 @@
 | 2026-05-06 | 9 | 유닛 생산 위치 점유 검사 | `tileX/tileY` 점유 확인, 실패 시 gold 환급·3초 재시도 |
 | 2026-05-08 | 10 | 로그 DOM 갱신 방식 정리 | 로그·건물·유닛 패널 `innerHTML` → `replaceChildren()` 전체 통일 |
 | 2026-05-12 | 11 | 입력 처리 안정화 | 방향키·WASD `preventDefault()` 추가, 버튼 포커스 시 게임 단축키 무시 |
+| 2026-05-13 | 12 | `weaponGeometry()` 데드코드 제거 | 코드베이스에서 이미 제거된 상태로 확인 — 별도 수정 불필요 |
+| 2026-05-13 | 13 | 감시탑 효과 주석 명시 | `_watchVisionBonus()`, `drawWatchTowerVision()`에 AI 탐지 전용·fog of war 미연결 주석 추가 |

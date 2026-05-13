@@ -156,6 +156,9 @@
           });
         }
       }
+      // AI 전용: 감시탑 점령 시 적 탐지 반경을 타일 단위로 늘린다.
+      // 플레이어 시야(fog of war)와는 무관하며, AI detectionRadius 계산에만 사용된다.
+      // fog of war를 추가한다면 VisionSystem 같은 별도 시스템으로 분리할 것.
       _watchVisionBonus() {
         return this.game.buildings.some(b => b.type === BuildingType.WATCH && b.faction.id === this.faction.id)
           ? WATCH_TOWER_VISION_BONUS : 0;

@@ -1,234 +1,236 @@
-﻿* { box-sizing: border-box; }
-    :root {
-      --ui-scale: 1;
-    }
-    html, body {
-      margin: 0;
-      width: 100%;
-      height: 100%;
-      min-height: 100%;
-      overflow: hidden;
-      background: #14161b;
-      color: #eef3ff;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    }
-    body {
-      width: 100vw;
-      height: 100vh;
-      min-height: 100dvh;
-      display: grid;
-      place-items: center;
-      padding: 6px;
-    }
-    @supports (height: 100dvh) {
-      body { height: 100dvh; }
-    }
-    #gameFrame {
-      position: relative;
-      width: calc(1600px * var(--ui-scale, 1));
-      height: calc(760px * var(--ui-scale, 1));
-      flex: 0 0 auto;
-    }
-    #gameShell {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 1600px;
-      height: 760px;
-      display: grid;
-      grid-template-columns: 1450px 150px;
-      grid-template-rows: 48px 640px 72px;
-      outline: 1px solid #313846;
-      background: #1c2028;
-      box-shadow: 0 24px 80px rgba(0, 0, 0, .45);
-      overflow: hidden;
-      transform: scale(var(--ui-scale, 1));
-      transform-origin: top left;
-      will-change: transform;
-    }
-    #topBar {
-      grid-column: 1 / 3;
-      display: flex;
-      align-items: center;
-      gap: 20px;
-      padding: 0 14px;
-      background: #222832;
-      border-bottom: 1px solid #384150;
-      font-size: 14px;
-      white-space: nowrap;
-      overflow: hidden;
-    }
-    .stat { display: inline-flex; gap: 7px; align-items: center; }
-    .value { color: #80c7ff; font-weight: 700; }
-    #canvasWrap {
-      position: relative;
-      grid-column: 1 / 2;
-      grid-row: 2 / 3;
-      width: 1450px;
-      height: 640px;
-      background: #0e1015;
-    }
-    canvas {
-      display: block;
-      width: 1450px;
-      height: 640px;
-      cursor: crosshair;
-    }
-    #sidePanel {
-      grid-column: 2 / 3;
-      grid-row: 2 / 4;
-      min-width: 0;
-      min-height: 0;
-      width: 150px;
-      padding: 6px;
-      border-left: 1px solid #384150;
-      background: #191d25;
-      overflow-y: auto;
-      overflow-x: hidden;
-      scrollbar-width: thin;
-      scrollbar-color: #4b5565 #191d25;
-    }
-    #sidePanel::-webkit-scrollbar { width: 8px; }
-    #sidePanel::-webkit-scrollbar-track { background: #191d25; }
-    #sidePanel::-webkit-scrollbar-thumb {
-      background: #4b5565;
-      border-radius: 4px;
-    }
-    #sidePanel h2 {
-      margin: 0 0 8px;
-      font-size: 11px;
-      letter-spacing: 0;
-      color: #ffffff;
-    }
-    .panelBlock {
-      margin-bottom: 8px;
-      padding: 6px;
-      border: 1px solid #343b48;
-      border-radius: 6px;
-      background: #222731;
-      min-width: 0;
-    }
-    .unitRow, .buildingRow {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 5px;
-      margin: 4px 0;
-      font-size: 9px;
-      color: #dbe4f5;
-    }
-    .unitRow span, .buildingRow span {
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .bar {
-      height: 7px;
-      margin-top: 4px;
-      background: #3c4351;
-      border-radius: 3px;
-      overflow: hidden;
-    }
-    .bar > span {
-      display: block;
-      height: 100%;
-      background: #4cc2ff;
-    }
-    #bottomPanel {
-      grid-column: 1 / 2;
-      grid-row: 3 / 4;
-      display: grid;
-      grid-template-columns: 1.1fr .9fr;
-      gap: 10px;
-      padding: 8px;
-      border-top: 1px solid #384150;
-      background: #20252e;
-    }
-    #dialogue, #log {
-      overflow: hidden;
-      border: 1px solid #373f4e;
-      border-radius: 6px;
-      background: #151922;
-      padding: 8px;
-      font-size: 12px;
-    }
-    #dialogueText { margin-bottom: 6px; color: #eaf0ff; }
-    .choices {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-    button {
-      height: 26px;
-      border: 1px solid #59677c;
-      border-radius: 5px;
-      color: #f5f8ff;
-      background: #2f3a4b;
-      font-size: 12px;
-      cursor: pointer;
-    }
-    button:hover { background: #3f4d61; }
-    button:disabled { opacity: 0.38; cursor: not-allowed; background: #1e2530; }
-    #logLines {
-      height: 48px;
-      overflow: hidden;
-      line-height: 16px;
-      color: #cbd5e8;
-    }
-    #overlay {
-      position: absolute;
-      inset: 0;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      gap: 14px;
-      background: rgba(8, 10, 14, .72);
-      color: #fff;
-      font-size: 34px;
-      font-weight: 800;
-      text-align: center;
-      z-index: 5;
-    }
-    #overlayButtons {
-      display: flex;
-      gap: 12px;
-    }
-    #startButton, #restartButton {
-      width: 132px;
-      height: 38px;
-      border-color: #8dc7ff;
-      background: #2363a6;
-      font-size: 16px;
-      font-weight: 800;
-    }
-    #restartButton {
-      border-color: #a8d4ff;
-      background: #1a4a7a;
-    }
-    #help {
-      margin-top: 10px;
-      font-size: 9px;
-      line-height: 1.42;
-      color: #b8c4d8;
-    }
-    .legend {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 4px;
-      margin-top: 6px;
-      font-size: 9px;
-    }
-    .legend span {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      min-width: 0;
-      white-space: nowrap;
-    }
-    .dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 2px;
-      display: inline-block;
-    }
+* { box-sizing: border-box; }
+:root {
+  --ui-scale: 1;
+}
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  overflow: hidden;
+  background: #14161b;
+  color: #eef3ff;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+body {
+  width: 100vw;
+  height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 6px;
+}
+@supports (height: 100dvh) {
+  body { height: 100dvh; }
+}
+#gameFrame {
+  position: relative;
+  width: calc(1600px * var(--ui-scale, 1));
+  height: calc(760px * var(--ui-scale, 1));
+  flex: 0 0 auto;
+}
+#gameShell {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1600px;
+  height: 760px;
+  display: grid;
+  grid-template-columns: 1450px 150px;
+  grid-template-rows: 48px 640px 72px;
+  outline: 1px solid #313846;
+  background: #1c2028;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, .45);
+  overflow: hidden;
+  transform: scale(var(--ui-scale, 1));
+  transform-origin: top left;
+  will-change: transform;
+}
+#topBar {
+  grid-column: 1 / 3;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 0 14px;
+  background: #222832;
+  border-bottom: 1px solid #384150;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.stat { display: inline-flex; gap: 7px; align-items: center; }
+.value { color: #80c7ff; font-weight: 700; }
+#canvasWrap {
+  position: relative;
+  grid-column: 1 / 2;
+  grid-row: 2 / 3;
+  width: 1450px;
+  height: 640px;
+  background: #0e1015;
+}
+canvas {
+  display: block;
+  width: 1450px;
+  height: 640px;
+  cursor: crosshair;
+}
+#sidePanel {
+  grid-column: 2 / 3;
+  grid-row: 2 / 4;
+  min-width: 0;
+  min-height: 0;
+  width: 150px;
+  padding: 6px;
+  border-left: 1px solid #384150;
+  background: #191d25;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #4b5565 #191d25;
+}
+#sidePanel::-webkit-scrollbar { width: 8px; }
+#sidePanel::-webkit-scrollbar-track { background: #191d25; }
+#sidePanel::-webkit-scrollbar-thumb {
+  background: #4b5565;
+  border-radius: 4px;
+}
+#sidePanel h2 {
+  margin: 0 0 8px;
+  font-size: 11px;
+  letter-spacing: 0;
+  color: #ffffff;
+}
+.panelBlock {
+  margin-bottom: 8px;
+  padding: 6px;
+  border: 1px solid #343b48;
+  border-radius: 6px;
+  background: #222731;
+  min-width: 0;
+}
+.unitRow, .buildingRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 5px;
+  margin: 4px 0;
+  font-size: 9px;
+  color: #dbe4f5;
+}
+.unitRow span, .buildingRow span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bar {
+  height: 7px;
+  margin-top: 4px;
+  background: #3c4351;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.bar > span {
+  display: block;
+  height: 100%;
+  background: #4cc2ff;
+}
+#bottomPanel {
+  grid-column: 1 / 2;
+  grid-row: 3 / 4;
+  display: grid;
+  grid-template-columns: 1.1fr .9fr;
+  gap: 10px;
+  padding: 8px;
+  border-top: 1px solid #384150;
+  background: #20252e;
+}
+#dialogue, #log {
+  overflow: hidden;
+  border: 1px solid #373f4e;
+  border-radius: 6px;
+  background: #151922;
+  padding: 8px;
+  font-size: 12px;
+}
+#dialogueText { margin-bottom: 6px; color: #eaf0ff; }
+.choices {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+button {
+  height: 26px;
+  border: 1px solid #59677c;
+  border-radius: 5px;
+  color: #f5f8ff;
+  background: #2f3a4b;
+  font-size: 12px;
+  cursor: pointer;
+}
+button:hover { background: #3f4d61; }
+button:disabled { opacity: 0.38; cursor: not-allowed; background: #1e2530; }
+#logLines {
+  height: 48px;
+  overflow: hidden;
+  line-height: 16px;
+  color: #cbd5e8;
+}
+#overlay {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 14px;
+  background: rgba(8, 10, 14, .72);
+  color: #fff;
+  font-size: 34px;
+  font-weight: 800;
+  text-align: center;
+  z-index: 5;
+}
+#overlayButtons {
+  display: flex;
+  gap: 12px;
+}
+#startButton, #restartButton {
+  width: 132px;
+  height: 38px;
+  border-color: #8dc7ff;
+  background: #2363a6;
+  font-size: 16px;
+  font-weight: 800;
+}
+#restartButton {
+  border-color: #a8d4ff;
+  background: #1a4a7a;
+}
+/* 재시작 버튼은 게임 종료 전까지 숨김 */
+.hidden { display: none; }
+#help {
+  margin-top: 10px;
+  font-size: 9px;
+  line-height: 1.42;
+  color: #b8c4d8;
+}
+.legend {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+  margin-top: 6px;
+  font-size: 9px;
+}
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  white-space: nowrap;
+}
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
+}

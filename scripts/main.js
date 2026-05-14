@@ -43,8 +43,8 @@
         const overlay = document.getElementById("overlay");
         overlay.style.display = "flex";
         document.getElementById("overlayText").textContent = "세력전 준비";
-        document.getElementById("startButton").style.display = "inline-block";
-        document.getElementById("restartButton").style.display = "none";
+        document.getElementById("startButton").classList.remove("hidden");
+        document.getElementById("restartButton").classList.add("hidden");
         document.getElementById("gameStatus").textContent = "대기";
         // 시작 전 카메라를 플레이어 유닛 위치로 초기 이동
         const playerUnits = this.units.filter(u => u.faction.id === "player");
@@ -398,8 +398,8 @@
         const overlay = document.getElementById("overlay");
         overlay.style.display = "flex";
         document.getElementById("overlayText").textContent = text;
-        document.getElementById("startButton").style.display = "none";
-        document.getElementById("restartButton").style.display = "inline-block";
+        document.getElementById("startButton").classList.add("hidden");
+        document.getElementById("restartButton").classList.remove("hidden");
         document.getElementById("gameStatus").textContent = "종료";
       }
 
